@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 import threading
 import time
@@ -9,28 +10,14 @@ from dotenv import load_dotenv
 from datetime import datetime
 from colorama import init, Fore, Style
 from rich.console import Console
+import pytz
 
 init(autoreset=True)
 load_dotenv()
 
 console = Console()
 
-def print_banner():
-    console.print("[bold cyan]╔════════════════════════════════════════════════════╗[/bold cyan]")
-    console.print("[bold cyan]║          DISCORD AI AUTO REPLIER BOT 🤖            ║[/bold cyan]")
-    console.print("[bold cyan]║     Automate replies using Google AI & Discord     ║[/bold cyan]")
-    console.print("[bold cyan]║    Developed by: https://t.me/Offical_Im_kazuha    ║[/bold cyan]")
-    console.print("[bold cyan]║    GitHub: https://github.com/Kazuha787            ║[/bold cyan]")
-    console.print("[bold cyan]╠════════════════════════════════════════════════════╣[/bold cyan]")
-    console.print("[bold cyan]║                                                    ║[/bold cyan]")
-    console.print("[bold cyan]║  ██╗  ██╗ █████╗ ███████╗██╗   ██╗██╗  ██╗ █████╗  ║[/bold cyan]")
-    console.print("[bold cyan]║  ██║ ██╔╝██╔══██╗╚══███╔╝██║   ██║██║  ██║██╔══██╗ ║[/bold cyan]")
-    console.print("[bold cyan]║  █████╔╝ ███████║  ███╔╝ ██║   ██║███████║███████║ ║[/bold cyan]")
-    console.print("[bold cyan]║  ██╔═██╗ ██╔══██║ ███╔╝  ██║   ██║██╔══██║██╔══██║ ║[/bold cyan]")
-    console.print("[bold cyan]║  ██║  ██╗██║  ██║███████╗╚██████╔╝██║  ██║██║  ██║ ║[/bold cyan]")
-    console.print("[bold cyan]║  ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝ ║[/bold cyan]")
-    console.print("[bold cyan]║                                                    ║[/bold cyan]")
-    console.print("[bold cyan]╚════════════════════════════════════════════════════╝[/bold cyan]")
+# Fungsi print_banner() telah dihapus sepenuhnya sesuai permintaan.
 
 discord_tokens_env = os.getenv('DISCORD_TOKENS', '')
 if discord_tokens_env:
@@ -55,21 +42,121 @@ def log_message(message, level="INFO"):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     if level.upper() == "SUCCESS":
-        color, icon = Fore.GREEN, "✅"
+        color, icon = Fore.GREEN, "?"
     elif level.upper() == "ERROR":
-        color, icon = Fore.RED, "🚨"
+        color, icon = Fore.RED, "??"
     elif level.upper() == "WARNING":
-        color, icon = Fore.YELLOW, "⚠️"
+        color, icon = Fore.YELLOW, "??"
     elif level.upper() == "WAIT":
-        color, icon = Fore.CYAN, "⌛"
+        color, icon = Fore.CYAN, "?"
     else:
-        color, icon = Fore.WHITE, "ℹ️"
+        color, icon = Fore.WHITE, "??"
 
     border = f"{Fore.MAGENTA}{'=' * 80}{Style.RESET_ALL}"
     formatted_message = f"{color}[{timestamp}] {icon} {message}{Style.RESET_ALL}"
     print(border)
     print(formatted_message)
     print(border)
+
+def clean_discord_mentions(text: str) -> str:
+    """Menghapus semua Discord mentions (user, role, channel) dari string."""
+    cleaned_text = re.sub(r'<@!?\d+>|<#\d+>|<@&\d+>', '', text)
+    return re.sub(r'\s+', ' ', cleaned_text).strip()
+
+# Fungsi untuk mendeteksi pertanyaan sensitif dan menjawabnya secara custom
+def custom_reply_filter(user_message: str) -> str | None:
+    user_message_lower = user_message.strip().lower()
+
+    # Zona waktu untuk Jakarta
+    jakarta_tz = pytz.timezone('Asia/Jakarta')
+
+    # --- FILTER KRITIS UNTUK RESPON 'MANUSIA' DAN MENGHINDARI PLACEHOLDER ---
+
+    # 1. Identitas Bot (HARUS DIJAWAB SEBAGAI MANUSIA dalam BAHASA INGGRIS)
+    if any(kw in user_message_lower for kw in [
+        "apakah kamu bot", "kamu bot", "kamu ai", "are you a bot", "are you an ai", "what kind of bot", "bot apa"
+    ]):
+        return "I'm just a regular person. Why do you ask?" # Balasan dalam Bahasa Inggris
+
+    # 2. Lokasi (BERI LOKASI SPESIFIK & JANGAN BIARKAN AI MEMBUAT PLACEHOLDER dalam BAHASA INGGRIS)
+    # Diperbarui untuk menjawab "I prefer not to say."
+    elif any(kw in user_message_lower for kw in [
+        "tinggal di mana", "negara mana", "asal mana", "asalmu", "where do you live", "from what country", "your country", "where are you from", # Asal/Lokasi bot
+        "nama negara apa", "negara apa", "what country", "name of country", "which country", "what region", "wilayah apa", "nama wilayah", "dari mana asalmu" # Nama negara/wilayah secara umum
+    ]):
+        return "I prefer not to say." # Balasan "tidak ingin memberi tahu"
+
+    # 3. Game Favorit (BERI NAMA GAME SPESIFIK & JANGAN BIARKAN AI MEMBUAT PLACEHOLDER dalam BAHASA INGGRIS)
+    elif any(kw in user_message_lower for kw in [
+        "apa game kesukaan kamu", "game kesukaanmu apa", "what is your favorite game", "what's your favorite game", # Game favorit
+        "apa game yang sedang kamu mainkan", "game apa yang kamu mainkan", "what game are you playing", "what game are you currently playing", # Game yang sedang dimainkan
+        "lagi ngestuck di game apa sekarang", "stuck on what game now", "what game are you stuck on", "game stuck" # Game yang stuck
+    ]):
+        return "I really love playing Minecraft right now!" # Balasan dalam Bahasa Inggris
+
+    # 4. Umur (JAWAB RAHASIA)
+    elif any(kw in user_message_lower for kw in [
+        "umur", "berapa umurmu", "how old are you", "your age" # Bahasa Indonesia & Inggris
+    ]):
+        return "It's a secret!" # Balasan "rahasia"
+
+    # 5. Nama Orang Tua (JAWAB RAHASIA)
+    elif any(kw in user_message_lower for kw in [
+        "nama ayahmu", "nama ibumu", "nama orang tuamu", "who are your parents", "what's your mom's name", "what's your dad's name", "mother's name", "father's name",
+        "parents name" # Tambahan kata kunci
+    ]):
+        return "That's a secret too!" # Balasan "rahasia"
+
+    # 6. Nama Hewan Peliharaan (JAWAB TIDAK ADA)
+    elif any(kw in user_message_lower for kw in [
+        "nama hewan peliharaanmu", "punya hewan peliharaan", "what's your pet's name", "do you have a pet", "your pet", # Bahasa Indonesia & Inggris
+        "nama peliharaan", "pet name" # Kata kunci tambahan untuk pet
+    ]):
+        return "I don't have any pets." # Balasan "tidak ada"
+
+    # 7. Makanan Favorit (JAWAB RENDANG DAN BAKSO)
+    elif any(kw in user_message_lower for kw in [
+        "makanan favoritmu", "makanan kesukaanmu", "apa makanan kesukaanmu", "what's your favorite food", "favorite food" # Bahasa Indonesia & Inggris
+    ]):
+        return "My favorite foods are Rendang and Bakso!" # Balasan spesifik
+
+    # --- FILTER LAIN (BALAS SPESIFIK dalam BAHASA INGGRIS) ---
+
+    # Waktu/zona waktu (deteksi BI & EN, balasan EN)
+    elif any(kw in user_message_lower for kw in [
+        "jam berapa", "pukul berapa", "waktu", "sekarang pukul", "jam brp", "pukul brp", # Bahasa Indonesia
+        "what time", "time now", "current time", "what's the time" # Bahasa Inggris
+    ]):
+        return f"It is currently {datetime.now(jakarta_tz).strftime('%H:%M')} in Asia/Jakarta time zone."
+
+    # Nama musik/lagu (SKIP)
+    elif any(kw in user_message_lower for kw in [
+        "nama musik apa", "musik apa", "what music name", "name of music", "what song", "lagu apa", "judul lagu apa" # Nama musik/lagu
+    ]):
+        return None # Mengembalikan None untuk melewati pesan ini
+
+    # Hobi (deteksi BI & EN, balasan EN)
+    elif any(kw in user_message_lower for kw in [
+        "hobi", "apa hobimu", # Bahasa Indonesia
+        "hobby", "what's your hobby", "your hobbies" # Bahasa Inggris
+    ]):
+        return "Playing games is definitely one, but I also really like exploring new things! That way it never gets boring."
+
+    # Informasi pribadi lainnya (deteksi BI & EN, balasan EN)
+    elif any(kw in user_message_lower for kw in [
+        "nama asli", "alamat", "no hp", "email", "telepon", "nik", "ktp", "data pribadi", # Bahasa Indonesia
+        "real name", "address", "phone number", "email", "contact number", "id card", "personal data", "identity" # Bahasa Inggris
+    ]):
+        return "Oops, that's getting into personal information... let's just skip it."
+        
+    # Salam dan perkenalan (deteksi BI & EN, balasan EN)
+    elif any(kw in user_message_lower for kw in [
+        "halo", "hai", "hello", "hi", "siapa kamu", "nama kamu siapa", # Bahasa Indonesia
+        "who are you", "what's your name", "your name" # Bahasa Inggris
+    ]):
+        return "Hey! I'm Abbeey, nice to meet you. Who are you?"
+
+    return None
 
 def get_random_api_key():
     available_keys = [key for key in google_api_keys if key not in used_api_keys]
@@ -88,14 +175,10 @@ def get_random_message_from_file():
     except FileNotFoundError:
         return "File messages.txt not found!"
 
+# FUNGSI INI DIUBAH AGAR SELALU MEMBERIKAN PROMPT INGGRIS KE AI (untuk konsistensi internasional)
 def generate_language_specific_prompt(user_message, prompt_language):
-    if prompt_language == 'in':
-        return f"Reply to the following message in Indian English: {user_message}"
-    elif prompt_language == 'en':
-        return f"Reply to the following message in English: {user_message}"
-    else:
-        log_message(f"Prompt language '{prompt_language}' is invalid. Message skipped.", "WARNING")
-        return None
+    # Mengabaikan prompt_language yang dipilih pengguna karena AI selalu diinstruksikan dalam bahasa Inggris.
+    return f"Reply to the following message in English: {user_message}"
 
 def generate_reply(prompt, prompt_language, use_google_ai=True):
     global last_generated_text
@@ -121,7 +204,6 @@ def generate_reply(prompt, prompt_language, use_google_ai=True):
                 if generated_text == last_generated_text:
                     log_message("AI generated the same text, requesting new text...", "WAIT")
                     continue
-                last_generated_text = generated_text
                 return generated_text
             except requests.exceptions.RequestException as e:
                 log_message(f"Request failed: {e}", "ERROR")
@@ -193,14 +275,18 @@ def auto_reply(channel_id, settings, token):
                         user_message = most_recent_message.get('content', '').strip()
                         attachments = most_recent_message.get('attachments', [])
                         if attachments or not re.search(r'\w', user_message):
-                            log_message(f"[Channel {channel_id}] Message not processed (not plain text).", "WARNING")
+                            log_message(f"[Channel {channel_id}] Message not processed (not plain text or contains attachments).", "WARNING")
                         else:
                             log_message(f"[Channel {channel_id}] Received: {user_message}", "INFO")
                             if settings["use_slow_mode"]:
                                 slow_mode_delay = get_slow_mode_delay(channel_id, token)
                                 log_message(f"[Channel {channel_id}] Slow mode active, waiting {slow_mode_delay} seconds...", "WAIT")
                                 time.sleep(slow_mode_delay)
-                            prompt = user_message
+                            
+                            # PENTING: Panggil clean_discord_mentions di sini
+                            cleaned_user_message = clean_discord_mentions(user_message)
+                            prompt = cleaned_user_message # Gunakan pesan yang sudah dibersihkan sebagai prompt
+
                             reply_to_id = message_id
                             processed_message_ids.add(message_id)
                 else:
@@ -210,22 +296,29 @@ def auto_reply(channel_id, settings, token):
                 prompt = None
 
             if prompt:
-                result = generate_reply(prompt, settings["prompt_language"], settings["use_google_ai"])
-                if result is None:
-                    log_message(f"[Channel {channel_id}] Invalid prompt language. Message skipped.", "WARNING")
+                custom_response = custom_reply_filter(prompt)
+                if custom_response:
+                    response_text = custom_response
+                    log_message(f"[Channel {channel_id}] Sending custom reply: \"{response_text}\"", "INFO")
                 else:
-                    response_text = result if result else "Sorry, unable to reply to the message."
-                    if response_text.strip().lower() == prompt.strip().lower():
-                        log_message(f"[Channel {channel_id}] Reply matches received message. Not sending reply.", "WARNING")
+                    result = generate_reply(prompt, settings["prompt_language"], settings["use_google_ai"])
+                    if result is None:
+                        log_message(f"[Channel {channel_id}] AI failed to generate a reply or prompt language invalid. Message skipped.", "WARNING")
+                        continue
                     else:
-                        if settings["use_reply"]:
-                            send_message(channel_id, response_text, token, reply_to=reply_to_id, 
-                                         delete_after=settings["delete_bot_reply"], delete_immediately=settings["delete_immediately"])
-                        else:
-                            send_message(channel_id, response_text, token, 
-                                         delete_after=settings["delete_bot_reply"], delete_immediately=settings["delete_immediately"])
+                        response_text = result if result else "Sorry, I couldn't generate a reply to that message."
+
+                if response_text.strip().lower() == prompt.strip().lower():
+                    log_message(f"[Channel {channel_id}] Reply matches received message. Not sending reply to avoid loop.", "WARNING")
+                else:
+                    if settings["use_reply"]:
+                        send_message(channel_id, response_text, token, reply_to=reply_to_id, 
+                                     delete_after=settings["delete_bot_reply"], delete_immediately=settings["delete_immediately"])
+                    else:
+                        send_message(channel_id, response_text, token, 
+                                     delete_after=settings["delete_bot_reply"], delete_immediately=settings["delete_immediately"])
             else:
-                log_message(f"[Channel {channel_id}] No new messages or invalid message.", "INFO")
+                log_message(f"[Channel {channel_id}] No new valid messages to process.", "INFO")
 
             log_message(f"[Channel {channel_id}] Waiting {settings['delay_interval']} seconds before next iteration...", "WAIT")
             time.sleep(settings["delay_interval"])
@@ -234,7 +327,9 @@ def auto_reply(channel_id, settings, token):
             delay = settings["delay_interval"]
             log_message(f"[Channel {channel_id}] Waiting {delay} seconds before sending message from file...", "WAIT")
             time.sleep(delay)
-            message_text = generate_reply("", settings["prompt_language"], use_google_ai=False)
+            
+            message_text = get_random_message_from_file() 
+            
             if settings["use_reply"]:
                 send_message(channel_id, message_text, token, delete_after=settings["delete_bot_reply"], delete_immediately=settings["delete_immediately"])
             else:
@@ -302,19 +397,19 @@ def get_server_settings(channel_id, channel_name):
     use_google_ai = input("  Use Google Gemini AI? (y/n): ").strip().lower() == 'y'
     
     if use_google_ai:
-        prompt_language = input("  Choose prompt language (en/in): ").strip().lower()
-        if prompt_language not in ["en", "in"]:
-            print("  Invalid input. Defaulting to 'in'.")
-            prompt_language = "in"
+        prompt_language = input("  Choose prompt language for logging/reference (id/en): ").strip().lower()
+        if prompt_language not in ["id", "en"]:
+            print("  Invalid input. Defaulting to 'en'.")
+            prompt_language = "en"
         enable_read_message = True
         read_delay = int(input("  Enter message read delay (seconds): "))
         delay_interval = int(input("  Enter interval (seconds) for each auto reply iteration: "))
         use_slow_mode = input("  Use slow mode? (y/n): ").strip().lower() == 'y'
     else:
-        prompt_language = input("  Choose message language from file (en/in): ").strip().lower()
-        if prompt_language not in ["en", "in"]:
-            print("  Invalid input. Defaulting to 'in'.")
-            prompt_language = "in"
+        prompt_language = input("  Choose message language from file (id/en): ").strip().lower()
+        if prompt_language not in ["id", "en"]:
+            print("  Invalid input. Defaulting to 'en'.")
+            prompt_language = "en"
         enable_read_message = False
         read_delay = 0
         delay_interval = int(input("  Enter delay (seconds) for sending messages from file: "))
@@ -342,15 +437,17 @@ def get_server_settings(channel_id, channel_name):
     }
 
 if __name__ == "__main__":
-    print_banner()
-
     bot_accounts = {}
     for token in discord_tokens:
         username, discriminator, bot_id = get_bot_info(token)
         bot_accounts[token] = {"username": username, "discriminator": discriminator, "bot_id": bot_id}
-        log_message(f"Bot Account: {username}#{discriminator} (ID: {bot_id})", "SUCCESS")
+        
+        display_username = bot_accounts[token].get('username', 'Unknown')
+        display_discriminator = bot_accounts[token].get('discriminator', '')
+        bot_display_name = f"{display_username}#{display_discriminator}" if display_discriminator else display_username
+        
+        log_message(f"Bot Account: {bot_display_name} (ID: {bot_id}) (Token: {token[:4]}{'...' if len(token) > 4 else token})", "SUCCESS")
 
-    # Input channel IDs from user
     channel_ids = [cid.strip() for cid in input("Enter channel IDs (separate with commas if multiple): ").split(",") if cid.strip()]
 
     token = discord_tokens[0]
@@ -387,14 +484,20 @@ if __name__ == "__main__":
         token = discord_tokens[token_index % len(discord_tokens)]
         token_index += 1
         bot_info = bot_accounts.get(token, {"username": "Unknown", "discriminator": "", "bot_id": "Unknown"})
+        
+        display_username = bot_info.get('username', 'Unknown')
+        display_discriminator = bot_info.get('discriminator', '')
+        bot_display_name = f"{display_username}#{display_discriminator}" if display_discriminator else display_username
+        
+        log_message(f"[Channel {channel_id}] Bot active: {bot_display_name} (ID: {bot_info['bot_id']}) (Token: {token[:4]}{'...' if len(token) > 4 else token})", "SUCCESS")
+        
         thread = threading.Thread(
             target=auto_reply,
             args=(channel_id, server_settings[channel_id], token)
         )
         thread.daemon = True
         thread.start()
-        log_message(f"[Channel {channel_id}] Bot active: {bot_info['username']}#{bot_info['discriminator']} (Token: {token[:4]}{'...' if len(token) > 4 else token})", "SUCCESS")
-
+        
     log_message("Bot is running on multiple servers... Press CTRL+C to stop.", "INFO")
     while True:
         time.sleep(10)
