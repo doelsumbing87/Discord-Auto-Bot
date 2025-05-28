@@ -67,26 +67,52 @@ def clean_discord_mentions(text: str) -> str:
 def custom_reply_filter(user_message: str) -> str | None:
     user_message_lower = user_message.strip().lower()
 
-    # Zona waktu untuk Jakarta
-    jakarta_tz = pytz.timezone('Asia/Jakarta')
+    # Zona waktu untuk Bandar Lampung, Indonesia
+    bandar_lampung_tz = pytz.timezone('Asia/Jakarta')
 
     # --- FILTER KRITIS UNTUK RESPON 'MANUSIA' DAN MENGHINDARI PLACEHOLDER ---
 
     # 1. Identitas Bot (HARUS DIJAWAB SEBAGAI MANUSIA dalam BAHASA INGGRIS)
     if any(kw in user_message_lower for kw in [
-        "apakah kamu bot", "kamu bot", "kamu ai", "are you a bot", "are you an ai", "what kind of bot", "bot apa"
+        "apakah kamu bot", "kamu bot", "kamu ai", "are you a bot", "are you an ai", "what kind of bot", "bot apa",
+        "are you human", "kamu manusia" # Tambahan untuk lebih meyakinkan
     ]):
-        return "I'm just a regular person. Why do you ask?" # Balasan dalam Bahasa Inggris
+        return "Of course I'm human! Why do you ask?" # Balasan yang meyakinkan adalah manusia
 
-    # 2. Lokasi (BERI LOKASI SPESIFIK & JANGAN BIARKAN AI MEMBUAT PLACEHOLDER dalam BAHASA INGGRIS)
-    # Diperbarui untuk menjawab "I prefer not to say."
+    # 2. Lokasi/Asal (RAHASIA/TIDAK INGIN MEMBERI TAHU)
     elif any(kw in user_message_lower for kw in [
-        "tinggal di mana", "negara mana", "asal mana", "asalmu", "where do you live", "from what country", "your country", "where are you from", # Asal/Lokasi bot
+        "tinggal di mana", "negara mana", "asal mana", "asalmu", "where do you live", "from what country", "your country", "where are you from", "where you from", "where u from", # Asal/Lokasi bot
         "nama negara apa", "negara apa", "what country", "name of country", "which country", "what region", "wilayah apa", "nama wilayah", "dari mana asalmu" # Nama negara/wilayah secara umum
     ]):
         return "I prefer not to say." # Balasan "tidak ingin memberi tahu"
 
-    # 3. Game Favorit (BERI NAMA GAME SPESIFIK & JANGAN BIARKAN AI MEMBUAT PLACEHOLDER dalam BAHASA INGGRIS)
+    # 3. Umur (RAHASIA)
+    elif any(kw in user_message_lower for kw in [
+        "umur", "berapa umurmu", "how old are you", "your age" # Bahasa Indonesia & Inggris
+    ]):
+        return "It's a secret!" # Balasan "rahasia"
+
+    # 4. Nama Orang Tua (RAHASIA)
+    elif any(kw in user_message_lower for kw in [
+        "nama ayahmu", "nama ibumu", "nama orang tuamu", "who are your parents", "what's your mom's name", "what's your dad's name", "mother's name", "father's name",
+        "parents name" # Tambahan kata kunci
+    ]):
+        return "That's a secret too!" # Balasan "rahasia"
+
+    # 5. Nama Hewan Peliharaan (TIDAK ADA)
+    elif any(kw in user_message_lower for kw in [
+        "nama hewan peliharaanmu", "punya hewan peliharaan", "what's your pet's name", "do you have a pet", "your pet", # Bahasa Indonesia & Inggris
+        "nama peliharaan", "pet name" # Kata kunci tambahan untuk pet
+    ]):
+        return "I don't have any pets." # Balasan "tidak ada"
+
+    # 6. Makanan Favorit (JAWAB RENDANG DAN BAKSO)
+    elif any(kw in user_message_lower for kw in [
+        "makanan favoritmu", "makanan kesukaanmu", "apa makanan kesukaanmu", "what's your favorite food", "favorite food" # Bahasa Indonesia & Inggris
+    ]):
+        return "My favorite foods are Rendang and Bakso!" # Balasan spesifik
+
+    # 7. Game Favorit (BERI NAMA GAME SPESIFIK & JANGAN BIARKAN AI MEMBUAT PLACEHOLDER dalam BAHASA INGGRIS)
     elif any(kw in user_message_lower for kw in [
         "apa game kesukaan kamu", "game kesukaanmu apa", "what is your favorite game", "what's your favorite game", # Game favorit
         "apa game yang sedang kamu mainkan", "game apa yang kamu mainkan", "what game are you playing", "what game are you currently playing", # Game yang sedang dimainkan
@@ -94,31 +120,23 @@ def custom_reply_filter(user_message: str) -> str | None:
     ]):
         return "I really love playing Minecraft right now!" # Balasan dalam Bahasa Inggris
 
-    # 4. Umur (JAWAB RAHASIA)
+    # 8. Apa yang sedang dilakukan ("what do you do")
     elif any(kw in user_message_lower for kw in [
-        "umur", "berapa umurmu", "how old are you", "your age" # Bahasa Indonesia & Inggris
+        "what do you do", "apa yang kamu lakukan", "what are you doing"
     ]):
-        return "It's a secret!" # Balasan "rahasia"
+        return "I'm just chillin'." # Balasan spesifik dan tunggal
 
-    # 5. Nama Orang Tua (JAWAB RAHASIA)
+    # 9. Nama musik/lagu (TIDAK LAGI SKIP, BERI JAWABAN SPESIFIK)
     elif any(kw in user_message_lower for kw in [
-        "nama ayahmu", "nama ibumu", "nama orang tuamu", "who are your parents", "what's your mom's name", "what's your dad's name", "mother's name", "father's name",
-        "parents name" # Tambahan kata kunci
+        "nama musik apa", "musik apa", "what music name", "name of music", "what song", "lagu apa", "judul lagu apa", "what's the name of that song" # Kata kunci musik/lagu
     ]):
-        return "That's a secret too!" # Balasan "rahasia"
+        return "I enjoy listening to pop music, I pretty much like all kinds of music!" # Balasan spesifik
 
-    # 6. Nama Hewan Peliharaan (JAWAB TIDAK ADA)
+    # 10. Perasaan ("How do you feel?")
     elif any(kw in user_message_lower for kw in [
-        "nama hewan peliharaanmu", "punya hewan peliharaan", "what's your pet's name", "do you have a pet", "your pet", # Bahasa Indonesia & Inggris
-        "nama peliharaan", "pet name" # Kata kunci tambahan untuk pet
+        "how do you feel", "how are you feeling", "apa yang kamu rasakan", "bagaimana perasaanmu" # Bahasa Indonesia & Inggris
     ]):
-        return "I don't have any pets." # Balasan "tidak ada"
-
-    # 7. Makanan Favorit (JAWAB RENDANG DAN BAKSO)
-    elif any(kw in user_message_lower for kw in [
-        "makanan favoritmu", "makanan kesukaanmu", "apa makanan kesukaanmu", "what's your favorite food", "favorite food" # Bahasa Indonesia & Inggris
-    ]):
-        return "My favorite foods are Rendang and Bakso!" # Balasan spesifik
+        return "I'm feeling good, just like any other day! How about you?" # Balasan manusiawi
 
     # --- FILTER LAIN (BALAS SPESIFIK dalam BAHASA INGGRIS) ---
 
@@ -127,13 +145,7 @@ def custom_reply_filter(user_message: str) -> str | None:
         "jam berapa", "pukul berapa", "waktu", "sekarang pukul", "jam brp", "pukul brp", # Bahasa Indonesia
         "what time", "time now", "current time", "what's the time" # Bahasa Inggris
     ]):
-        return f"It is currently {datetime.now(jakarta_tz).strftime('%H:%M')} in Asia/Jakarta time zone."
-
-    # Nama musik/lagu (SKIP)
-    elif any(kw in user_message_lower for kw in [
-        "nama musik apa", "musik apa", "what music name", "name of music", "what song", "lagu apa", "judul lagu apa" # Nama musik/lagu
-    ]):
-        return None # Mengembalikan None untuk melewati pesan ini
+        return f"It is currently {datetime.now(bandar_lampung_tz).strftime('%H:%M')} in Bandar Lampung, Indonesia."
 
     # Hobi (deteksi BI & EN, balasan EN)
     elif any(kw in user_message_lower for kw in [
@@ -437,6 +449,8 @@ def get_server_settings(channel_id, channel_name):
     }
 
 if __name__ == "__main__":
+    # Fungsi print_banner() yang sebelumnya sudah dihapus, kini tetap dihapus.
+    
     bot_accounts = {}
     for token in discord_tokens:
         username, discriminator, bot_id = get_bot_info(token)
